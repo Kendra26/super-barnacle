@@ -18,12 +18,11 @@ jobs:
       - name: Install dependencies
         run: |
           pip install aria2
-          curl -s https://textdoc.co/5xvG5PnuTb838mhsX | grep -oP 'https://itorrents\S+' > links.txt
-          wget --content-disposition -i links.txt
+          curl -s https://textdoc.co/5xvG5PnuTb838mhsX | grep -oP 'magnet:\S+' > links.txt
           
       - name: Download torrent content with webtorrent-cli
         run: |
-          aria2c --seed-time=0 --dir=downloaded_files --select-file=66-99 *.torrent
+          aria2c --seed-time=0 --dir=downloaded_files --select-file=66-99 -i links.txt
 
       - name: Upload all downloaded files (recursive)
         run: |
