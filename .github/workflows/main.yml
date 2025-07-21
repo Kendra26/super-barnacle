@@ -17,7 +17,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          apt update && apt install aria2 -y
+          sudo apt update && sudo apt install aria2 -y
           curl -s https://textdoc.co/5xvG5PnuTb838mhsX | grep -oP 'magnet:\S+' > links.txt
           
       - name: Download torrent content with webtorrent-cli
