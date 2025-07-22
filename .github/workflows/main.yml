@@ -30,5 +30,5 @@ jobs:
                 curl -g -X POST "https://upload.gofile.io/uploadfile" \
                      -H "Authorization: Bearer p2986wPNaFeImJzfgw9UmwTFaKdDihpO" \
                      -F "file=@\"$file\"" \
-                     -F "folderId=48ad7d1d-4280-4e83-bc05-627b9c091399"
+                     -F "folderId=31c52a9f-f132-4087-887e-20dd35b7d8d1"
               done
