@@ -18,17 +18,17 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt update && sudo apt install aria2 -y
-          curl -s https://textdoc.co/5xvG5PnuTb838mhsX | grep -oP 'magnet:\S+' > links.txt
+          curl -s https://textdoc.co/5xvG5PnuTb838mhsX | grep -oP 'magnet:\S+|https?://\S+\.(mp4|mkv|avi|srt)' > links.txt
           
       - name: Download torrent content with webtorrent-cli
         run: |
-          aria2c --seed-time=0 --dir=downloaded_files --select-file=66-99 -i links.txt
+          aria2c --seed-time=0 --dir=downloaded_files -i links.txt
 
       - name: Upload all downloaded files (recursive)
         run: |
           find ./downloaded_files -type f \( -iname "*.avi" -o -iname "*.mp4" -o -iname "*.mkv" -o -iname "*.srt" \) -print0 | while IFS= read -r -d '' file; do
           curl -g -X POST "https://upload.gofile.io/uploadfile" \
-          -H "Authorization: Bearer p2986wPNaFeImJzfgw9UmwTFaKdDihpO" \
+          -H "Authorization: Bearer 1lQraGqc7ZGecDsDKGOzM7uygb8kiRyx" \
           -F "file=@\"$file\"" \
-          -F "folderId=31c52a9f-f132-4087-887e-20dd35b7d8d1"
+          -F "folderId=72c5f904-ffa9-4671-80d7-286179542e2f"
           done
