@@ -1,4 +1,4 @@
-name: Torrent Download & Upload to Pixeldrain
+name: Textdoc Download to Main to Gofile
 
 on:
   push:
@@ -28,7 +28,7 @@ jobs:
         run: |
           find ./downloaded_files -type f \( -iname "*.avi" -o -iname "*.mp4" -o -iname "*.mkv" -o -iname "*.srt" \) -print0 | while IFS= read -r -d '' file; do
           curl -g -X POST "https://upload.gofile.io/uploadfile" \
-          -H "Authorization: Bearer 1lQraGqc7ZGecDsDKGOzM7uygb8kiRyx" \
+          -H "Authorization: Bearer NkEP9nPmjC5bYQB7ZabZKnsUEBi7ww85" \
           -F "file=@\"$file\"" \
-          -F "folderId=72c5f904-ffa9-4671-80d7-286179542e2f"
+          -F "folderId=569169f0-479c-4720-857a-2aa341d5eca9"
           done
