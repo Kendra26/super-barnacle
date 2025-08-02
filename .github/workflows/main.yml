@@ -3,7 +3,7 @@ name: Textdoc Download to Main to Gofile
 on:
   push:
     branches:
-      - Mainnn
+      - Mainn
   workflow_dispatch:
 
 jobs:
