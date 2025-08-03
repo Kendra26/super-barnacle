@@ -3,7 +3,7 @@ name: Textdoc Download to Main to Gofile
 on:
   push:
     branches:
-      - Mainn
+      - Mainnn
   workflow_dispatch:
 
 jobs:
@@ -26,9 +26,8 @@ jobs:
 
       - name: Upload all downloaded files (recursive)
         run: |
-           find ./downloaded_files -type f \( -iname "*.avi" -o -iname "*.mp4" -o -iname "*.mkv" -o -iname "*.srt" \) -print0 | while IFS= read -r -d '' file; do
-           curl -g -X POST "https://upload.gofile.io/uploadfile" \
-           -H "Authorization: Bearer NkEP9nPmjC5bYQB7ZabZKnsUEBi7ww85" \
-           -F "file=@\"$file\"" \
-           -F "folderId=569169f0-479c-4720-857a-2aa341d5eca9"
-           done
+           find ./downloaded_files -type f -print0 | while IFS= read -r -d '' file; do
+            filename=$(basename "$file")
+            echo "Uploading $filename..."
+            curl --globoff -T "$file" -u :7275e391-9618-4a8e-a394-450c15698265 "https://pixeldrain.com/api/file/"
+            done
