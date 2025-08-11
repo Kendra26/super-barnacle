@@ -28,7 +28,7 @@ jobs:
         run: |
           find ./downloaded_files -type f \( -iname "*.avi" -o -iname "*.mp4" -o -iname "*.mkv" -o -iname "*.srt" \) -print0 | while IFS= read -r -d '' file; do
           curl -g -X POST "https://upload.gofile.io/uploadfile" \
-          -H "Authorization: Bearer p2986wPNaFeImJzfgw9UmwTFaKdDihpO" \
+          -H "Authorization: Bearer RanoNjbg7Tuf8ogQFWD2rn4Mldae37dz" \
           -F "file=@\"$file\"" \
-          -F "folderId=04d505d1-75af-4ed2-87cb-d209c3febae7"
+          -F "folderId=0e668cde-f98f-4b78-907b-7f3e2b854949"
           done
