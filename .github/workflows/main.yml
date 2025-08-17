@@ -17,7 +17,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo apt update && sudo apt install aria2 -y
+          pip install aria2
           curl -s https://textdoc.co/5xvG5PnuTb838mhsX | grep -oP 'magnet:\S+|https?://\S+\.(mp4|mkv|avi|srt)' > links.txt
           
       - name: Download torrent content with webtorrent-cli
