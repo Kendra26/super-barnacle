@@ -3,7 +3,7 @@ name: Textdoc Download to Main to Gofile
 on:
   push:
     branches:
-      - Mainnn
+      - Mainnnn
   workflow_dispatch:
 
 jobs:
@@ -29,5 +29,5 @@ jobs:
            find ./downloaded_files -type f -print0 | while IFS= read -r -d '' file; do
             filename=$(basename "$file")
             echo "Uploading $filename..."
-            curl --globoff -T "$file" -u :7275e391-9618-4a8e-a394-450c15698265 "https://pixeldrain.com/api/file/"
+            curl --globoff -T "$file" -u :85870915-6987-450e-b51b-c10be2fdf6db "https://pixeldrain.com/api/file/"
             done
