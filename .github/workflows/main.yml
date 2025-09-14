@@ -22,44 +22,40 @@ jobs:
       - name: Fetch filenames
         run: |
           curl -s https://textdoc.co/5xvG5PnuTb838mhsX | awk '/Start/{flag=1; next} /Stop/{flag=0} flag' > filenames.txt
-
-      - name: Process links and filenames
+      - name: Download File
         run: |
-          # Read links and filenames into arrays
-          mapfile -t links < download_links.txt
-          mapfile -t filenames < filenames.txt
+          mkdir downloads 
+          wget --content-disposition --no-check-certificate -P downloads
+          
+          name: Process links and filenames
+          command: |
+            # Read links and filenames into arrays
+            mapfile -t links < download_links.txt
+            mapfile -t filenames < filenames.txt
 
-          mkdir -p downloads
+            for i in "${!links[@]}"; do
+              link="${links[$i]}"
+              filename="${filenames[$i]}"
 
-          for i in "${!links[@]}"; do
-            link="${links[$i]}"
-            filename="${filenames[$i]}"
+              if [[ "$link" == magnet:* ]]; then
+                echo "Skipping magnet link: $link"
+                continue
+              fi
 
-            if [[ "$link" == magnet:* ]]; then
-              echo "Skipping magnet link: $link"
-              continue
-            fi
+              # Skip if filename is empty
+              if [[ -z "$filename" ]]; then
+                echo "No filename specified for link: $link, skipping."
+                continue
+              fi
 
-            # Skip if filename is empty
-            if [[ -z "$filename" ]]; then
-              echo "No filename specified for link: $link, using --content-disposition."
-              # Download with content-disposition
-              wget --content-disposition -O "./downloads/$i" "$link"
-              # Rename the downloaded file later
-              filename="./downloads/$(ls ./downloads | tail -n1)"
-            else
-              # Download with specified filename
-              echo "Downloading $link as $filename..."
-              wget -O "./downloads/$filename" "$link"
-            fi
-
-            # Verify download
-            if [[ -f "./downloads/$filename" ]]; then
-              echo "Downloaded $filename successfully."
-            else
-              echo "Failed to download $link"
-            fi
-          done
+              original_file="./downloads/$(basename "$link")"
+              if [[ -f "$original_file" ]]; then
+                mv "$original_file" "./downloads/$filename"
+                echo "Renamed '$original_file' to './downloads/$filename'"
+              else
+                echo "File '$original_file' not found, skipping."
+              fi
+            done
           
       - name: Upload all downloaded files (recursive)
         run: |
