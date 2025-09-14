@@ -3,7 +3,7 @@ name: Textdoc Download to Main to Gofile
 on:
   push:
     branches:
-      - Main  # Corrected branch name
+      - Main
   workflow_dispatch:
 
 jobs:
@@ -22,46 +22,59 @@ jobs:
       - name: Fetch filenames
         run: |
           curl -s https://textdoc.co/5xvG5PnuTb838mhsX | awk '/Start/{flag=1; next} /Stop/{flag=0} flag' > filenames.txt
-      - name: Download File
+
+      - name: Download Files
         run: |
-          mkdir downloads 
+          mkdir -p downloads
           wget --content-disposition --no-check-certificate -P downloads -i download_links.txt
-          
-          name: Process links and filenames
-          command: |
-            # Read links and filenames into arrays
-            mapfile -t links < download_links.txt
-            mapfile -t filenames < filenames.txt
 
-            for i in "${!links[@]}"; do
-              link="${links[$i]}"
-              filename="${filenames[$i]}"
-
-              if [[ "$link" == magnet:* ]]; then
-                echo "Skipping magnet link: $link"
-                continue
-              fi
-
-              # Skip if filename is empty
-              if [[ -z "$filename" ]]; then
-                echo "No filename specified for link: $link, skipping."
-                continue
-              fi
-
-              original_file="./downloads/$(basename "$link")"
-              if [[ -f "$original_file" ]]; then
-                mv "$original_file" "./downloads/$filename"
-                echo "Renamed '$original_file' to './downloads/$filename'"
-              else
-                echo "File '$original_file' not found, skipping."
-              fi
-            done
-          
-      - name: Upload all downloaded files (recursive)
+      - name: Process links and filenames
         run: |
-           find ./downloads -type f \( -iname "*.avi" -o -iname "*.mp4" -o -iname "*.mkv" -o -iname "*.srt" \) -print0 | while IFS= read -r -d '' file; do
-             curl -g -X POST "https://upload.gofile.io/uploadfile" \
-             -H "Authorization: Bearer djsj" \
-             -F "file=@\"$file\"" \
-             -F "folderId=33072955-da61-4062-"
-           done
+          # Read links and filenames into arrays
+          mapfile -t links < download_links.txt
+          mapfile -t filenames < filenames.txt
+
+          for i in "${!links[@]}"; do
+            link="${links[$i]}"
+            filename="${filenames[$i]}"
+
+            # Skip magnet links
+            if [[ "$link" == magnet:* ]]; then
+              echo "Skipping magnet link: $link"
+              continue
+            fi
+
+            # Skip if filename is empty
+            if [[ -z "$filename" ]]; then
+              echo "No filename specified for link: $link, skipping."
+              continue
+            fi
+
+            # Determine the expected filename for the downloaded file
+            original_file="./downloads/$(basename "$link")"
+
+            # Wait for the file to exist (in case wget hasn't finished)
+            retries=0
+            while [[ ! -f "$original_file" && $retries -lt 10 ]]; do
+              sleep 1
+              retries=$((retries + 1))
+            done
+
+            if [[ -f "$original_file" ]]; then
+              mv "$original_file" "./downloads/$filename"
+              echo "Renamed '$original_file' to './downloads/$filename'"
+            else
+              echo "File '$original_file' not found after waiting, skipping."
+            fi
+          done
+
+      - name: Upload all files to Gofile with folderId
+        run: |
+          FOLDER_ID="your_folder_id_here"  # Replace with your folderId
+          find ./downloads -type f \( -iname "*.avi" -o -iname "*.mp4" -o -iname "*.mkv" -o -iname "*.srt" \) -print0 | while IFS= read -r -d '' file; do
+            echo "Uploading $file..."
+            curl -g -X POST "https://upload.gofile.io/uploadFile" \
+              -H "Authorization: Bearer NkEP9nPmjC5bYQB7ZabZKnsUEBi7ww85" \
+              -F "file=@\"$file\"" \
+              -F "folderId=33072955-da61-4062-bad6-71f3bc339712"
+          done
