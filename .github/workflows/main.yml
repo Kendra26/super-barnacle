@@ -25,7 +25,7 @@ jobs:
       - name: Download File
         run: |
           mkdir downloads 
-          wget --content-disposition --no-check-certificate -P downloads
+          wget --content-disposition --no-check-certificate -P downloads -i download_links.txt
           
           name: Process links and filenames
           command: |
