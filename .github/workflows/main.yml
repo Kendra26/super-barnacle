@@ -3,7 +3,7 @@ name: Textdoc Download to Main to Gofile
 on:
   push:
     branches:
-      - Mainnn
+      - Main  # Corrected branch name
   workflow_dispatch:
 
 jobs:
@@ -15,19 +15,57 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Install dependencies
+      - name: Fetch download links
         run: |
-          sudo apt update && sudo apt install aria2 -y
-          curl -s https://textdoc.co/5xvG5PnuTb838mhsX | grep -oP 'magnet:\S+|https?://\S+\.(mp4|mkv|avi|srt)' > links.txt
-          
-      - name: Download torrent content with webtorrent-cli
-        run: |
-          aria2c --seed-time=0 --dir=downloaded_files -i links.txt
+          curl -s https://textdoc.co/5xvG5PnuTb838mhsX | grep -oP 'magnet:\S+|https?://\S+\.(mp4|mkv|avi|srt)' > download_links.txt
 
+      - name: Fetch filenames
+        run: |
+          curl -s https://textdoc.co/5xvG5PnuTb838mhsX | awk '/Start/{flag=1; next} /Stop/{flag=0} flag' > filenames.txt
+
+      - name: Process links and filenames
+        run: |
+          # Read links and filenames into arrays
+          mapfile -t links < download_links.txt
+          mapfile -t filenames < filenames.txt
+
+          mkdir -p downloads
+
+          for i in "${!links[@]}"; do
+            link="${links[$i]}"
+            filename="${filenames[$i]}"
+
+            if [[ "$link" == magnet:* ]]; then
+              echo "Skipping magnet link: $link"
+              continue
+            fi
+
+            # Skip if filename is empty
+            if [[ -z "$filename" ]]; then
+              echo "No filename specified for link: $link, using --content-disposition."
+              # Download with content-disposition
+              wget --content-disposition -O "./downloads/$i" "$link"
+              # Rename the downloaded file later
+              filename="./downloads/$(ls ./downloads | tail -n1)"
+            else
+              # Download with specified filename
+              echo "Downloading $link as $filename..."
+              wget -O "./downloads/$filename" "$link"
+            fi
+
+            # Verify download
+            if [[ -f "./downloads/$filename" ]]; then
+              echo "Downloaded $filename successfully."
+            else
+              echo "Failed to download $link"
+            fi
+          done
+          
       - name: Upload all downloaded files (recursive)
         run: |
-           find ./downloaded_files -type f -print0 | while IFS= read -r -d '' file; do
-            filename=$(basename "$file")
-            echo "Uploading $filename..."
-            curl --globoff -T "$file" -u :7275e391-9618-4a8e-a394-450c15698265 "https://pixeldrain.com/api/file/"
-            done
+           find ./downloads -type f \( -iname "*.avi" -o -iname "*.mp4" -o -iname "*.mkv" -o -iname "*.srt" \) -print0 | while IFS= read -r -d '' file; do
+             curl -g -X POST "https://upload.gofile.io/uploadfile" \
+             -H "Authorization: Bearer djsj" \
+             -F "file=@\"$file\"" \
+             -F "folderId=33072955-da61-4062-"
+           done
