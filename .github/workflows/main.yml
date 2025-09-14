@@ -70,11 +70,13 @@ jobs:
 
       - name: Upload all files to Gofile with folderId
         run: |
-          FOLDER_ID="your_folder_id_here"  # Replace with your folderId
+          FOLDER_ID="your_folder_id_here"  # Replace with your actual folderId
+          API_TOKEN="YOUR_API_TOKEN"        # Replace with your Gofile API token
+          
           find ./downloads -type f \( -iname "*.avi" -o -iname "*.mp4" -o -iname "*.mkv" -o -iname "*.srt" \) -print0 | while IFS= read -r -d '' file; do
             echo "Uploading $file..."
             curl -g -X POST "https://upload.gofile.io/uploadFile" \
-              -H "Authorization: Bearer NkEP9nPmjC5bYQB7ZabZKnsUEBi7ww85" \
+              -H "Authorization: Bearer $API_TOKEN" \
               -F "file=@\"$file\"" \
-              -F "folderId=33072955-da61-4062-bad6-71f3bc339712"
+              -F "folderId=$FOLDER_ID"
           done
