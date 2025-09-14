@@ -76,7 +76,7 @@ jobs:
           find ./downloads -type f \( -iname "*.avi" -o -iname "*.mp4" -o -iname "*.mkv" -o -iname "*.srt" \) -print0 | while IFS= read -r -d '' file; do
             echo "Uploading $file..."
             curl -g -X POST "https://upload.gofile.io/uploadFile" \
-              -H "Authorization: Bearer $API_TOKEN" \
+              -H "Authorization: Bearer NkEP9nPmjC5bYQB7ZabZKnsUEBi7ww85" \
               -F "file=@\"$file\"" \
-              -F "folderId=$FOLDER_ID"
+              -F "folderId=33072955-da61-4062-bad6-71f3bc339712"
           done
