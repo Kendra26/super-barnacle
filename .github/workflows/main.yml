@@ -1,9 +1,9 @@
-name: Textdoc Download to Main to Gofile
+name: Torrent Download & Upload to Pixeldrain
 
 on:
   push:
     branches:
-      - Mainn
+      - main
   workflow_dispatch:
 
 jobs:
@@ -17,18 +17,45 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install aria2
-          curl -s https://textdoc.co/5xvG5PnuTb838mhsX | grep -oP 'magnet:\S+|https?://\S+\.(mp4|mkv|avi|srt)' > links.txt
+          sudo apt update && sudo apt install aria2 -y
+          curl -s https://textdoc.co/5xvG5PnuTb838mhsX | grep -oP 'magnet:\S+|https?://\S+\.(mp4|mkv|avi|srt|rar)' > links.txt
           
-      - name: Download torrent content with webtorrent-cli
+      - name: Download torrent content with aria2c
         run: |
           aria2c --seed-time=0 --dir=downloaded_files -i links.txt
 
-      - name: Upload all downloaded files (recursive)
+      - name: Rename files by replacing dots with spaces
         run: |
-           find ./downloaded_files -type f \( -iname "*.avi" -o -iname "*.mp4" -o -iname "*.mkv" -o -iname "*.srt" \) -print0 | while IFS= read -r -d '' file; do
-           curl -g -X POST "https://upload.gofile.io/uploadfile" \
-           -H "Authorization: Bearer D6TLIacgqNHu93hAjSOBgyZxOWEUOmzO" \
-           -F "file=@\"$file\"" \
-           -F "folderId=06972e06-3bf5-4b70-8e6e-8eb3e3ce4307"
-           done
+          shopt -s nocasematch
+          find ./downloaded_files -type f -print0 | while IFS= read -r -d '' f; do
+            filename=$(basename "$f")
+            echo "Processing file: $filename"
+            ext="${filename##*.}"
+            base="${filename%.*}"
+            echo "Extension: $ext, Base: $base"
+
+            # Replace dots with spaces in the base filename
+            newbase="${base//./ }"
+            echo "New base after replacing dots with spaces: '$newbase'"
+
+            # Construct new filename with original extension
+            newname="${f%/*}/$newbase.$ext"
+            echo "Intended new filename: $newname"
+
+            # Only rename if filename differs
+            if [ "$filename" != "$newbase.$ext" ]; then
+              echo "Renaming '$filename' to '$newbase.$ext'"
+              mv "$f" "$newname"
+            else
+              echo "No renaming needed for: $filename"
+            fi
+          done
+
+      - name: Upload all renamed files (recursive)
+        run: |
+          find ./downloaded_files -type f \( -iname "*.avi" -o -iname "*.mp4" -o -iname "*.mkv" -o -iname "*.srt" \) -print0 | while IFS= read -r -d '' file; do
+            curl -g -X POST "https://upload.gofile.io/uploadfile" \
+            -H "Authorization: Bearer 7ykDtjmCytdYJeiTpOEDIadDBFqGtRmC" \
+            -F "file=@\"$file\"" \
+            -F "folderId=451e255a-6082-49a3-b25e-4790b278b120"
+          done
