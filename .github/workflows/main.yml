@@ -1,9 +1,9 @@
-name: Textdoc Download to Main to Gofile
+name: Torrent Download & Upload to Pixeldrain
 
 on:
   push:
     branches:
-      - Mainnn
+      - main
   workflow_dispatch:
 
 jobs:
@@ -18,16 +18,34 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt update && sudo apt install aria2 -y
-          curl -s https://textdoc.co/5xvG5PnuTb838mhsX | grep -oP 'magnet:\S+|https?://\S+\.(mp4|mkv|avi|srt)' > links.txt
+          curl -s https://textdoc.co/5xvG5PnuTb838mhsX | grep -oP 'magnet:\S+|https?://\S+\.(mp4|mkv|avi|srt|rar)' > links.txt
           
-      - name: Download torrent content with webtorrent-cli
+      - name: Download torrent content with aria2
         run: |
           aria2c --seed-time=0 --dir=downloaded_files -i links.txt
 
+      - name: Rename files (remove dots except before extension)
+        run: |
+          find ./downloaded_files -type f \( -iname "*.avi" -o -iname "*.mp4" -o -iname "*.mkv" -o -iname "*.srt" \) | while read -r file; do
+            dir=$(dirname "$file")
+            base=$(basename "$file")
+            extension="${base##*.}"
+            filename="${base%.*}"
+            # Replace dots with spaces in filename
+            new_filename=$(echo "$filename" | sed 's/\./ /g')
+            # Reassemble
+            new_name="${new_filename}.${extension}"
+            # Rename the file if different
+            if [ "$base" != "$new_name" ]; then
+              mv "$file" "$dir/$new_name"
+            fi
+          done
+
       - name: Upload all downloaded files (recursive)
         run: |
-           find ./downloaded_files -type f -print0 | while IFS= read -r -d '' file; do
-            filename=$(basename "$file")
-            echo "Uploading $filename..."
-            curl --globoff -T "$file" -u :7275e391-9618-4a8e-a394-450c15698265 "https://pixeldrain.com/api/file/"
-            done
+          find ./downloaded_files -type f \( -iname "*.avi" -o -iname "*.mp4" -o -iname "*.mkv" -o -iname "*.srt" \) -print0 | while IFS= read -r -d '' file; do
+            curl -g -X POST "https://upload.gofile.io/uploadfile" \
+            -H "Authorization: Bearer NkEP9nPmjC5bYQB7ZabZKnsUEBi7ww85" \
+            -F "file=@\"$file\"" \
+            -F "folderId=33072955-da61-4062-bad6-71f3bc339712"
+          done
