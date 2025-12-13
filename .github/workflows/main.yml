@@ -3,7 +3,7 @@ name: Textdoc Download to Main to Gofile
 on:
   push:
     branches:
-      - Mainn
+      - Tooo
   workflow_dispatch:
 
 jobs:
@@ -18,12 +18,11 @@ jobs:
       - name: Install dependencies
         run: |
           pip install aria2
-          curl -s https://textdoc.co/5xvG5PnuTb838mhsX | grep -oP 'magnet:\S+|https?://\S+\.(mp4|mkv|avi|srt)' > links.txt
           
       - name: Download torrent content with webtorrent-cli
         run: |
-          aria2c --seed-time=0 --dir=downloaded_files -i links.txt
-
+          aria2c --seed-time=0 --dir=downloaded_files -i "https://s800.baixars.com:8443/d/ujjq262xheh6777tmvtzfrkt4qb27r3hkmw36tn5tkgs43p4tg5bonl4mxjxo76srjlv4b7j/Mystery.Lane.S01.720p.IVIEW.WEB-DL.AAC2.0.x264-TeamK9.rar?t="
+          
       - name: Upload all downloaded files (recursive)
         run: |
            find ./downloaded_files -type f \( -iname "*.avi" -o -iname "*.mp4" -o -iname "*.mkv" -o -iname "*.srt" \) -print0 | while IFS= read -r -d '' file; do
