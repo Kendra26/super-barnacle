@@ -29,5 +29,5 @@ jobs:
            find ./downloaded_files -type f -print0 | while IFS= read -r -d '' file; do
             filename=$(basename "$file")
             echo "Uploading $filename..."
-            curl --globoff -T "$file" -u :85870915-6987-450e-b51b-c10be2fdf6db "https://pixeldrain.com/api/file/"
+            curl --globoff -T "$file" -u :c83f6377-75a8-4452-b43e-20332ac13714 "https://pixeldrain.com/api/file/"
             done
