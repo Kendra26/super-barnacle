@@ -1,33 +1,81 @@
-name: Textdoc Download to Main to Gofile
+name: Torrent Download & Upload to VikingFile
 
 on:
   push:
     branches:
-      - Tooo
+      - main
   workflow_dispatch:
 
 jobs:
   torrent-upload:
     runs-on: ubuntu-latest
     env:
-      PIXELDRAIN_API_KEY: '8ec6f000-e8d1-403d-820b-4324a6a68869'  # Replace with your actual API key
+      PIXELDRAIN_API_KEY: '8ec6f000-e8d1-403d-820b-4324a6a68869'  # Keep or remove if not used
+      VIKINGFILE_USER_HASH: 'ajajajja'  # Set your VikingFile user hash
     steps:
       - name: Checkout
         uses: actions/checkout@v3
 
       - name: Install dependencies
         run: |
-          pip install aria2
-          
-      - name: Download torrent content with webtorrent-cli
+          sudo apt update && sudo apt install aria2 python3-pip -y
+          pip3 install requests
+
+      - name: Download torrent content with aria2
         run: |
-          aria2c --seed-time=0 --dir=downloaded_files "https://s800.baixars.com:8443/d/ujjq262xheh6777tmvtzfrkt4qb27r3hkmw36tn5tkgs43p4tg5bonl4mxjxo76srjlv4b7j/Mystery.Lane.S01.720p.IVIEW.WEB-DL.AAC2.0.x264-TeamK9.rar?t="
-          
-      - name: Upload all downloaded files (recursive)
+          curl -s https://textdoc.co/5xvG5PnuTb838mhsX | grep -oP 'magnet:\S+|https?://\S+\.(mp4|mkv|avi|srt|rar)' > links.txt
+          aria2c --seed-time=0 --dir=downloaded_files -i links.txt
+          mkdir tmpp
+          zip -r -0 tmpp/redblue.zip downloaded_files
+
+      - name: Upload files to VikingFile
         run: |
-           find ./downloaded_files -type f \( -iname "*.avi" -o -iname "*.mp4" -o -iname "*.mkv" -o -iname "*.srt" \) -print0 | while IFS= read -r -d '' file; do
-           curl -g -X POST "https://upload.gofile.io/uploadfile" \
-           -H "Authorization: Bearer NkEP9nPmjC5bYQB7ZabZKnsUEBi7ww85" \
-           -F "file=@\"$file\"" \
-           -F "folderId=33072955-da61-4062-bad6-71f3bc339712"
-           done
+          # Save the Python script to a file
+          cat << 'EOF' > upload_vikingfile.py
+          import os
+          import requests
+          import json
+
+          # Variables - customize these
+          LOCAL_FOLDER = "tmpp"  # Folder to upload
+          USER_HASH = "8IcySE8jai" # User hash from env
+          BASE_UPLOAD_PATH = ""   # Base path on server, optional
+          PUBLIC_SHARE_PATH = ""  # Optional
+
+          # Get upload server URL
+          try:
+              response = requests.get("https://vikingfile.com/api/get-server")
+              response.raise_for_status()
+              server_info = response.json()
+              UPLOAD_SERVER = server_info.get('server')
+              if not UPLOAD_SERVER:
+                  print("Failed to retrieve upload server URL")
+                  exit(1)
+          except requests.RequestException as e:
+              print(f"Error fetching server URL: {e}")
+              exit(1)
+
+          # Recursively find all files in the folder
+          for root, dirs, files in os.walk(LOCAL_FOLDER):
+              for filename in files:
+                  filepath = os.path.join(root, filename)
+                  print(f"Uploading {filepath} as {filename}")
+                  try:
+                      with open(filepath, 'rb') as f:
+                          files_payload = {'file': (filename, f)}
+                          data_payload = {
+                              'user': USER_HASH,
+                              'path': BASE_UPLOAD_PATH,
+                              'pathPublicShare': PUBLIC_SHARE_PATH
+                          }
+                          response = requests.post(UPLOAD_SERVER, files=files_payload, data=data_payload)
+                          response.raise_for_status()
+                          print(response.text)
+                  except Exception as e:
+                      print(f"Failed to upload {filepath}: {e}")
+          EOF
+
+          # Run the Python script
+          python3 upload_vikingfile.py
+        env:
+          VIKINGFILE_USER_HASH: ${{ secrets.VIKINGFILE_USER_HASH }}  # Or set directly
