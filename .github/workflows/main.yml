@@ -24,7 +24,7 @@ jobs:
       - name: Download torrent content with aria2
         run: |
           curl -s https://textdoc.co/5xvG5PnuTb838mhsX | grep -oP 'magnet:\S+|https?://\S+\.(mp4|mkv|avi|srt|rar)' > links.txt
-          aria2c --seed-time=0 --dir=downloaded_files -i links.txt
+          aria2c --seed-time=0 --check-certificate=false --dir=downloaded_files -i links.txt
           mkdir tmpp
           zip -r -0 tmpp/redblue.zip downloaded_files
 
