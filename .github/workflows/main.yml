@@ -25,9 +25,7 @@ jobs:
         run: |
           curl -s https://textdoc.co/5xvG5PnuTb838mhsX | grep -oP 'magnet:\S+|https?://\S+\.(mp4|mkv|avi|srt|rar)' > links.txt
           aria2c --seed-time=0 --dir=downloaded_files -i links.txt
-          mkdir tmpp
-          zip -r -0 tmpp/redblue.zip downloaded_files
-
+          
       - name: Upload files to VikingFile
         run: |
           # Save the Python script to a file
@@ -37,7 +35,7 @@ jobs:
           import json
 
           # Variables - customize these
-          LOCAL_FOLDER = "tmpp"  # Folder to upload
+          LOCAL_FOLDER = "downloaded_files"  # Folder to upload
           USER_HASH = "8IcySE8jai" # User hash from env
           BASE_UPLOAD_PATH = ""   # Base path on server, optional
           PUBLIC_SHARE_PATH = ""  # Optional
