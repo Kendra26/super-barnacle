@@ -1,33 +1,56 @@
-name: Textdoc Download to Main to Gofile
+
+name: Torrent Download & Upload to Filemirage
 
 on:
   push:
     branches:
-      - Mainnn
+      - Mirage
   workflow_dispatch:
 
 jobs:
   torrent-upload:
     runs-on: ubuntu-latest
     env:
-      PIXELDRAIN_API_KEY: '8ec6f000-e8d1-403d-820b-4324a6a68869'  # Replace with your actual API key
+      PIXELDRAIN_API_KEY: '8ec6f000-e8d1-403d-820b-4324a6a68869'  # Keep for reference if needed
+      FILEMIRAGE_API_TOKEN: '9QQH-DGES-CWQZ-FXNV'  # Your Filemirage API token
+      FOLDER_PATH: 'downloaded_files'  # Folder to store downloads
     steps:
       - name: Checkout
         uses: actions/checkout@v3
 
       - name: Install dependencies
         run: |
-          sudo apt update && sudo apt install aria2 -y
-          curl -s https://textdoc.co/5xvG5PnuTb838mhsX | grep -oP 'magnet:\S+|https?://\S+\.(mp4|mkv|avi|srt)' > links.txt
-          
-      - name: Download torrent content with webtorrent-cli
-        run: |
-          aria2c --seed-time=0 --dir=downloaded_files -i links.txt
+          sudo apt update && sudo apt install aria2 jq curl -y
+          # Download links (replace with your actual method for links)
+          curl -s https://textdoc.co/5xvG5PnuTb838mhsX | grep -oP 'magnet:\S+|https?://\S+\.(mp4|mkv|avi|srt|rar)' > links.txt
 
-      - name: Upload all downloaded files (recursive)
+      - name: Download torrent content with aria2
         run: |
-           find ./downloaded_files -type f -print0 | while IFS= read -r -d '' file; do
-            filename=$(basename "$file")
-            echo "Uploading $filename..."
-            curl --globoff -T "$file" -u :7275e391-9618-4a8e-a394-450c15698265 "https://pixeldrain.com/api/file/"
-            done
+          mkdir -p $FOLDER_PATH
+          aria2c --seed-time=0 --dir=$FOLDER_PATH -i links.txt
+
+      - name: Upload files to Filemirage
+        run: |
+          # Set variables
+          SERVER=$(curl -s https://filemirage.com/api/servers | jq -r '.data.server')
+          UPLOAD_ID=$(curl -s https://filemirage.com/api/servers | jq -r '.data.upload_id')
+          
+          echo "Using server: $SERVER"
+          echo "Upload ID: $UPLOAD_ID"
+          
+          # Recursively find and upload files
+          find "$FOLDER_PATH" -type f | while read -r FILE; do
+              FILENAME=$(basename "$FILE")
+              echo "Uploading: $FILE"
+              
+              RESPONSE=$(curl -s -H "Authorization: Bearer 9QQH-DGES-CWQZ-FXNV" \
+                -F "file=@$FILE;filename=$FILENAME" \
+                "$SERVER/upload.php")
+              
+              success=$(echo "$RESPONSE" | jq -r '.success')
+              if [ "$success" != "true" ]; then
+                  echo "Failed to upload $FILENAME: $(echo "$RESPONSE" | jq -r '.message')"
+              else
+                  echo "Successfully uploaded: $FILENAME"
+              fi
+          done
