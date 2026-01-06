@@ -1,4 +1,5 @@
-name: Torrent Download & Upload to Pixeldrain
+
+name: Torrent Download & Upload to Filemirage
 
 on:
   push:
@@ -10,42 +11,48 @@ jobs:
   torrent-upload:
     runs-on: ubuntu-latest
     env:
-      PIXELDRAIN_API_KEY: '8ec6f000-e8d1-403d-820b-4324a6a68869'  # Replace with your actual API key
+      PIXELDRAIN_API_KEY: '8ec6f000-e8d1-403d-820b-4324a6a68869'  # Keep for reference if needed
+      FILEMIRAGE_API_TOKEN: '9QQH-DGES-CWQZ-FXNV'  # Your Filemirage API token
+      FOLDER_PATH: 'downloaded_files'  # Folder to store downloads
     steps:
       - name: Checkout
         uses: actions/checkout@v3
 
       - name: Install dependencies
         run: |
-          sudo apt update && sudo apt install aria2 -y
-          curl -s https://textdoc.co/5xvG5PnuTb838mhsX | grep -oP 'magnet:\S+|https?://\S+\.(mp4|mkv|avi|srt|rar)' > links.txt
-          
+          sudo apt update && sudo apt install aria2 jq curl -y
+          # Download links (replace with your actual method for links)
+          curl -s https://textdoc.co/5xvG5PnuTb838mhsX | grep -oP 'magnet:\S+|https?://\S+\.(mp4|mkv|avi|srt|rar|zip)' > links.txt
+
       - name: Download torrent content with aria2
         run: |
-          aria2c --seed-time=0 --dir=downloaded_files -i links.txt
+          mkdir -p $FOLDER_PATH
+          mkdir tmp
+          aria2c --seed-time=0 --dir=$FOLDER_PATH -i links.txt
+          zip -r -0 tmp/basement.zip downloaded_files
 
-      - name: Rename files (remove dots except before extension)
+      - name: Upload files to Filemirage
         run: |
-          find ./downloaded_files -type f \( -iname "*.avi" -o -iname "*.mp4" -o -iname "*.mkv" -o -iname "*.srt" \) | while read -r file; do
-            dir=$(dirname "$file")
-            base=$(basename "$file")
-            extension="${base##*.}"
-            filename="${base%.*}"
-            # Replace dots with spaces in filename
-            new_filename=$(echo "$filename" | sed 's/\./ /g')
-            # Reassemble
-            new_name="${new_filename}.${extension}"
-            # Rename the file if different
-            if [ "$base" != "$new_name" ]; then
-              mv "$file" "$dir/$new_name"
-            fi
-          done
-
-      - name: Upload all downloaded files (recursive)
-        run: |
-          find ./downloaded_files -type f \( -iname "*.avi" -o -iname "*.mp4" -o -iname "*.mkv" -o -iname "*.srt" \) -print0 | while IFS= read -r -d '' file; do
-            curl -g -X POST "https://upload.gofile.io/uploadfile" \
-            -H "Authorization: Bearer NkEP9nPmjC5bYQB7ZabZKnsUEBi7ww85" \
-            -F "file=@\"$file\"" \
-            -F "folderId=33072955-da61-4062-bad6-71f3bc339712"
+          # Set variables
+          SERVER=$(curl -s https://filemirage.com/api/servers | jq -r '.data.server')
+          UPLOAD_ID=$(curl -s https://filemirage.com/api/servers | jq -r '.data.upload_id')
+          
+          echo "Using server: $SERVER"
+          echo "Upload ID: $UPLOAD_ID"
+          
+          # Recursively find and upload files
+          find tmp -type f | while read -r FILE; do
+              FILENAME=$(basename "$FILE")
+              echo "Uploading: $FILE"
+              
+              RESPONSE=$(curl -s -H "Authorization: Bearer 9QQH-DGES-CWQZ-FXNV" \
+                -F "file=@$FILE;filename=$FILENAME" \
+                "$SERVER/upload.php")
+              
+              success=$(echo "$RESPONSE" | jq -r '.success')
+              if [ "$success" != "true" ]; then
+                  echo "Failed to upload $FILENAME: $(echo "$RESPONSE" | jq -r '.message')"
+              else
+                  echo "Successfully uploaded: $FILENAME"
+              fi
           done
