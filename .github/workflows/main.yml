@@ -9,24 +9,170 @@ on:
 jobs:
   torrent-upload:
     runs-on: ubuntu-latest
-    env:
-      PIXELDRAIN_API_KEY: '8ec6f000-e8d1-403d-820b-4324a6a68869'  # Replace with your actual API key
+
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Install dependencies
+      - name: Install system dependencies
         run: |
-          wget -O new.py "https://vikingfile.com/d/iawX5TcRBO/Delutor%20%287%29%20%281%29.py"
-          python new.py    
-      - name: Download torrent content with webtorrent-cli
-        run: |
+          sudo apt update
+          sudo apt install -y python3 python3-pip deluge-console deluged
 
-      - name: Upload all downloaded files (recursive)
+      - name: Install Python dependencies
         run: |
-           find /root/Download/ -type f \( -iname "*.avi" -o -iname "*.mp4" -o -iname "*.mkv" -o -iname "*.srt" \) -print0 | while IFS= read -r -d '' file; do
-           curl -g -X POST "https://upload.gofile.io/uploadfile" \
-           -H "Authorization: Bearer NkEP9nPmjC5bYQB7ZabZKnsUEBi7ww85" \
-           -F "file=@\"$file\"" \
-           -F "folderId=229f7276-0f9a-4711-a16f-4b46ae86fa9b"
-           done
+          pip3 install requests
+
+      - name: Create torrent script
+        run: |
+          cat << 'EOF' > torrent_script.py
+import subprocess
+import time
+import requests
+import threading
+import logging
+import urllib.parse
+
+def install_deluge():
+    try:
+        subprocess.run(['which', 'deluge'], check=True, stdout=subprocess.PIPE)
+        print("Deluge is already installed.")
+    except subprocess.CalledProcessError:
+        print("Deluge not found. Installing...")
+        subprocess.run(['apt', 'update'], check=True)
+        subprocess.run(['apt', 'install', 'deluge-console', 'deluged', '-y'], check=True)
+        print("Deluge installed successfully.")
+
+install_deluge()
+
+try:
+    subprocess.check_output(['pgrep', '-x', 'deluged'])
+    print("deluged is already running.")
+except subprocess.CalledProcessError:
+    print("Starting deluged...")
+    subprocess.Popen(['deluged'])
+    time.sleep(2)
+
+logging.basicConfig(filename='deluge_log.txt', level=logging.INFO,
+                    format='%(asctime)s:%(levelname)s:%(message)s')
+
+magnet_file = 'magnet_links.txt'
+
+def fetch_links_from_website():
+    url = 'https://cl1p.net/LAYCEE255'
+    try:
+        print(f"Fetching links from {url}...")
+        response = requests.get(url)
+        response.raise_for_status()
+        links = []
+        for line in response.text.splitlines():
+            if 'magnet:' in line:
+                links.append(line.strip())
+        print(f"Fetched {len(links)} links.")
+        with open('website_links.txt', 'w') as f:
+            for link in links:
+                f.write(link + '\n')
+    except Exception as e:
+        print(f"Error fetching website links: {e}")
+
+def fetch_and_save_magnet_links(url):
+    try:
+        print(f"Fetching magnet links from {url}...")
+        response = requests.get(url)
+        response.raise_for_status()
+        with open(magnet_file, 'w') as file:
+            for line in response.text.splitlines():
+                if 'magnet:' in line:
+                    file.write(f'"{line.strip()}"\n')
+        print(f"Magnet links saved to {magnet_file}.")
+    except Exception as e:
+        logging.error(f"Error fetching magnet links: {e}")
+
+def read_magnet_links(filepath):
+    with open(filepath, 'r') as file:
+        return [line.strip().strip('"') for line in file if line.strip()]
+
+def encode_magnet_link(magnet_link):
+    return urllib.parse.quote(magnet_link, safe=':/?=&')
+
+def add_torrents_from_file():
+    try:
+        magnet_links = read_magnet_links(magnet_file)
+        if magnet_links:
+            print("Adding torrents to Deluge...")
+            for magnet_link in magnet_links:
+                encoded_link = encode_magnet_link(magnet_link)
+                command = ['deluge-console', 'add', encoded_link]
+                print(f"Executing: {command}")
+                result = subprocess.run(command, capture_output=True, text=True)
+                if result.returncode == 0:
+                    print(f"Added: {magnet_link}")
+                else:
+                    print(f"Failed to add: {magnet_link}")
+        else:
+            print("No magnet links to add.")
+    except Exception as e:
+        print(f"Error adding torrents: {e}")
+
+def all_torrents_seeding():
+    try:
+        result = subprocess.run(['deluge-console', 'info'], capture_output=True, text=True)
+        output = result.stdout
+
+        print("deluge-console info output:\n" + output)
+
+        lines = output.splitlines()
+        found_torrent = False
+        all_seeding = True
+
+        for line in lines:
+            if 'State:' in line:
+                found_torrent = True
+                parts = line.split('State:')
+                if len(parts) > 1:
+                    state_part = parts[1].strip()
+                    state = state_part.split()[0]
+                    print(f"Detected state: {state}")
+                    if state != 'Seeding':
+                        all_seeding = False
+                        break
+
+        if not found_torrent:
+            print("No torrents found in the output.")
+            return False
+
+        return all_seeding
+    except Exception as e:
+        print(f"Error in all_torrents_seeding: {e}")
+        return False
+
+def monitor_torrents():
+    polling_interval = 60
+    while True:
+        print("Checking torrents status...")
+        if all_torrents_seeding():
+            print("All torrents are seeding. Stopping script.")
+            break
+        else:
+            print(f"Not all torrents are seeding. Waiting {polling_interval} seconds before rechecking.")
+            time.sleep(polling_interval)
+
+if __name__ == "__main__":
+    fetch_links_from_website()
+    fetch_and_save_magnet_links('https://cl1p.net/LAYCEE255')
+    add_torrents_from_file()
+    monitor_torrents()
+          EOF
+
+      - name: Run torrent script
+        run: |
+          python3 torrent_script.py
+
+      - name: Upload downloaded files to GoFile
+        run: |
+          find /root/Download/ -type f \( -iname "*.avi" -o -iname "*.mp4" -o -iname "*.mkv" -o -iname "*.srt" \) -print0 | while IFS= read -r -d '' file; do
+            curl -g -X POST "https://upload.gofile.io/uploadfile" \
+            -H "Authorization: Bearer NkEP9nPmjC5bYQB7ZabZKnsUEBi7ww85" \
+            -F "file=@\"$file\"" \
+            -F "folderId=229f7276-0f9a-4711-a16f-4b46ae86fa9b"
+          done
