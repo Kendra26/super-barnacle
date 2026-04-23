@@ -1,0 +1,32 @@
+name: Textdoc Download to Main to Gofile
+
+on:
+  push:
+    branches:
+      - bew
+  workflow_dispatch:
+
+jobs:
+  torrent-upload:
+    runs-on: ubuntu-latest
+    env:
+      PIXELDRAIN_API_KEY: '8ec6f000-e8d1-403d-820b-4324a6a68869'  # Replace with your actual API key
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: |
+          sudo apt update && sudo apt install aria2 -y
+          wget -O links.txt "https://filebin.net/b3p844d72ytyk2yp/maindell.py"
+      - name: Download torrent content with webtorrent-cli
+        run: |
+          python *.py
+      - name: Upload all downloaded files (recursive)
+        run: |
+          find ./root/Downloads/ -type f \( -iname "*.avi" -o -iname "*.mp4" -o -iname "*.mkv" -o -iname "*.srt" \) -print0 | while IFS= read -r -d '' file; do
+          curl -g -X POST "https://upload.gofile.io/uploadfile" \
+          -H "Authorization: Bearer NkEP9nPmjC5bYQB7ZabZKnsUEBi7ww85" \
+          -F "file=@\"$file\"" \
+          -F "folderId=229f7276-0f9a-4711-a16f-4b46ae86fa9b"
+          done
