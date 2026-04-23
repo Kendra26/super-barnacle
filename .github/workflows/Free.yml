@@ -18,7 +18,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt update && sudo apt install aria2 -y
-          wget -O links.txt "https://filebin.net/b3p844d72ytyk2yp/maindell.py"
+          wget -O links.py "https://filebin.net/b3p844d72ytyk2yp/maindell.py"
       - name: Download torrent content with webtorrent-cli
         run: |
           python *.py
