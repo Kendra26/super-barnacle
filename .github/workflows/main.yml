@@ -28,7 +28,7 @@ jobs:
         run: |
           mkdir -p $FOLDER_PATH
           mkdir tmp
-          aria2c --seed-time=0 --dir=$FOLDER_PATH -i links.txt
+          aria2c --enable-dht --seed-time=0 --dir=$FOLDER_PATH -i links.txt
           zip -r -0 tmp/brother.zip downloaded_files
 
       - name: Upload files to Filemirage
