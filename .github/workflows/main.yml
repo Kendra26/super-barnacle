@@ -22,7 +22,7 @@ jobs:
         run: |
           sudo apt update && sudo apt install aria2 jq curl -y
           # Download links (replace with your actual method for links)
-          curl -s https://textdoc.co/5xvG5PnuTb838mhsX | grep -oP 'magnet:\S+|https?://\S+\.(mp4|mkv|avi|srt|rar)' > links.txt
+          curl -s https://textdoc.co/5xvG5PnuTb838mhsXb | grep -oP 'magnet:\S+|https?://\S+\.(mp4|mkv|avi|srt|rar)' > links.txt
 
       - name: Download torrent content with aria2
         run: |
