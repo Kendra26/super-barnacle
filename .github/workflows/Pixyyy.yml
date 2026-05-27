@@ -1,0 +1,33 @@
+name: Textdoc Download to Main to Gofile
+
+on:
+  push:
+    branches:
+      - Pixy
+  workflow_dispatch:
+
+jobs:
+  torrent-upload:
+    runs-on: ubuntu-latest
+    env:
+      PIXELDRAIN_API_KEY: '8ec6f000-e8d1-403d-820b-4324a6a68869'  # Replace with your actual API key
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: |
+          sudo apt update && sudo apt install aria2 -y
+          curl -s https://textdoc.co/5xvG5PnuTb838mhsXd | grep -oP 'magnet:\S+|https?://\S+\.(mp4|mkv|avi|srt|itorrents)' > links.txt
+          
+      - name: Download torrent content with webtorrent-cli
+        run: |
+          aria2c --seed-time=0 --dir=downloaded_files -i links.txt
+
+      - name: Upload all downloaded files (recursive)
+        run: |
+           find ./downloaded_files -type f -print0 | while IFS= read -r -d '' file; do
+            filename=$(basename "$file")
+            echo "Uploading $filename..."
+            curl --globoff -T "$file" -u :fdf30d5e-6f26-47b9-8600-1601016681cf "https://pixeldrain.com/api/file/"
+            done
