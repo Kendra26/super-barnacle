@@ -22,7 +22,7 @@ jobs:
         run: |
           sudo apt update && sudo apt install aria2 jq curl -y
           # Download links (replace with your actual method for links)
-          curl -L "https://base44.app/api/apps/6a722594a123d710ca90e3b2/files/mp/public/6a722594a123d710ca90e3b2/64c928160_page.txt" -o page.txt
+          curl -L "https://page-roll-publishing.lovable.app/api/public/p/github-download/raw" -o page.txt
 
       - name: Download torrent content with aria2
         run: |
