@@ -27,7 +27,7 @@ jobs:
       - name: Download torrent content with aria2
         run: |
           mkdir -p $FOLDER_PATH
-          aria2c --seed-time=0 --dir=$FOLDER_PATH -i links.txt
+          aria2c --seed-time=0 --dir=$FOLDER_PATH -i page.txt
 
       - name: Upload files to Filemirage
         run: |
