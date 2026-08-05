@@ -22,14 +22,14 @@ jobs:
         run: |
           sudo apt update && sudo apt install aria2 jq curl -y
           # Download links (replace with your actual method for links)
-          curl -s https://textdoc.co/5xvG5PnuTb838mhsXd | grep -oP 'magnet:\S+|https?://\S+\.(mp4|mkv|avi|srt|rar|zip)' > links.txt
+          curl -L "https://fhpsbwpqtteuchtgyqlj.supabase.co/functions/v1/page-download/322bd089-5a17-4431-af0f-02d323b47f30" -o page.txt
 
       - name: Download torrent content with aria2
         run: |
           mkdir -p $FOLDER_PATH
           mkdir tmp
           aria2c --enable-dht --seed-time=0 --dir=$FOLDER_PATH -i links.txt
-          zip -r -0 tmp/murderbot.zip downloaded_files
+          zip -r -0 tmp/breaking-bear.zip downloaded_files
 
       - name: Upload files to Filemirage
         run: |
