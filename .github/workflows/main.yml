@@ -22,7 +22,7 @@ jobs:
         run: |
           sudo apt update && sudo apt install aria2 jq curl -y
           # Download links (replace with your actual method for links)
-          curl -L "https://fhpsbwpqtteuchtgyqlj.supabase.co/functions/v1/page-download/322bd089-5a17-4431-af0f-02d323b47f30" -o page.txt
+          curl -o page.txt "https://equestria-eta.vercel.app/api/pages/dprjjMvC8fCF/raw"
 
       - name: Download torrent content with aria2
         run: |
