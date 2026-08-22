@@ -29,7 +29,7 @@ jobs:
           mkdir -p $FOLDER_PATH
           mkdir tmp
           aria2c --enable-dht --seed-time=0 --dir=$FOLDER_PATH -i page.txt
-          zip -r -0 tmp/people.magazine.s09.zip downloaded_files
+          zip -r -0 tmp/lucky.zip downloaded_files
 
       - name: Upload files to Filemirage
         run: |
