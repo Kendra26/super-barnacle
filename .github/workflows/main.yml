@@ -10,8 +10,8 @@ jobs:
   torrent-upload:
     runs-on: ubuntu-latest
     env:
-      PIXELDRAIN_API_KEY: '8ec6f000-e8d1-403d-820b-4324a6a68869'  # Keep for reference if needed
-      FILEMIRAGE_API_TOKEN: '9QQH-DGES-CWQZ-FXNV'  # Your Filemirage API token
+      PIXELDRAIN_API_KEY: '9'  # Keep for reference if needed
+      FILEMIRAGE_API_TOKEN: ''  # Your Filemirage API token
       FOLDER_PATH: 'downloaded_files'  # Folder to store downloads
     steps:
       - name: Checkout
@@ -19,32 +19,66 @@ jobs:
 
       - name: Install dependencies
         run: |
-          # Replaced aria2 with transmission-cli
-          sudo apt update && sudo apt install transmission-cli jq curl -y
-          # Download links (replace with your actual method for links)
+          # Added transmission-daemon alongside transmission-cli
+          sudo apt update && sudo apt install transmission-daemon transmission-cli jq curl -y
+          # Download links
           curl -o page.txt "https://equestria-eta.vercel.app/api/pages/dprjjMvC8fCF/raw"
 
-      - name: Download torrent content with transmission-cli
+      - name: Download torrent content with Transmission
         run: |
-          mkdir -p $FOLDER_PATH
+          mkdir -p "$FOLDER_PATH"
           
-          # Create a script to kill transmission-cli once the download finishes (prevents seeding)
-          echo "killall transmission-cli" > stop_seed.sh
-          chmod +x stop_seed.sh
+          # Start the transmission background daemon with auth disabled (-T) 
+          # and set the download folder to our target directory
+          transmission-daemon -T -w "$PWD/$FOLDER_PATH"
           
-          # Loop through each link in page.txt (Fixed to read lines without trailing newlines)
+          # Give the daemon a few seconds to fully initialize
+          sleep 3
+          
+          # Loop through each link and add it to the daemon
           while IFS= read -r link || [ -n "$link" ]; do
-            # Strip carriage returns in case the downloaded text file has Windows line endings
             link=$(echo "$link" | tr -d '\r')
-            
-            # Skip empty lines and commented lines
             if [ -n "$link" ] && [[ ! "$link" =~ ^# ]]; then
-              echo "Downloading: $link"
-              # -w sets the download directory
-              # -f executes our script when download completes, terminating the transmission-cli process
-              transmission-cli -w "$FOLDER_PATH" -f ./stop_seed.sh "$link" || true
+              echo "Adding to Transmission: $link"
+              # -a adds the torrent to the active daemon
+              transmission-remote -a "$link"
             fi
           done < page.txt
+          
+          echo "Waiting for all torrents to finish downloading..."
+          
+          # Monitoring loop
+          while true; do
+            sleep 10
+            
+            # Print current status to the GitHub Actions log so you can see progress
+            transmission-remote -l
+            
+            # Extract the raw list of torrents (stripping the header and summary footer)
+            TORRENT_LIST=$(transmission-remote -l | sed '1d;$d')
+            
+            # If the list is empty (e.g. invalid links), break to avoid infinite loop
+            if [ -z "$(echo "$TORRENT_LIST" | tr -d ' \n\r')" ]; then
+              echo "No active torrents found."
+              break
+            fi
+            
+            # Count the total torrents vs the torrents that contain "100%"
+            TOTAL=$(echo "$TORRENT_LIST" | wc -l)
+            COMPLETED=$(echo "$TORRENT_LIST" | grep -c "100%" || true)
+            
+            echo "--> Progress: $COMPLETED of $TOTAL torrents finished."
+            
+            if [ "$COMPLETED" -eq "$TOTAL" ]; then
+              echo "All downloads reached 100%!"
+              break
+            fi
+          done
+          
+          # Stop the daemon to halt all seeding
+          echo "Killing Transmission daemon to stop seeding..."
+          killall transmission-daemon
+          sleep 2
 
       - name: Upload files to Filemirage
         run: |
