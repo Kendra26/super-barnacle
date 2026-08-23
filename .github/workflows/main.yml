@@ -32,8 +32,8 @@ jobs:
           echo "killall transmission-cli" > stop_seed.sh
           chmod +x stop_seed.sh
           
-          # Loop through each link in page.txt
-          while IFS= read -r link; do
+          # Loop through each link in page.txt (Fixed to read lines without trailing newlines)
+          while IFS= read -r link || [ -n "$link" ]; do
             # Strip carriage returns in case the downloaded text file has Windows line endings
             link=$(echo "$link" | tr -d '\r')
             
