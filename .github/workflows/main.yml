@@ -1,4 +1,3 @@
-
 name: Torrent Download & Upload to Filemirage
 
 on:
@@ -20,14 +19,32 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo apt update && sudo apt install aria2 jq curl -y
+          # Replaced aria2 with transmission-cli
+          sudo apt update && sudo apt install transmission-cli jq curl -y
           # Download links (replace with your actual method for links)
           curl -o page.txt "https://equestria-eta.vercel.app/api/pages/dprjjMvC8fCF/raw"
 
-      - name: Download torrent content with aria2
+      - name: Download torrent content with transmission-cli
         run: |
           mkdir -p $FOLDER_PATH
-          aria2c --seed-time=0 --dir=$FOLDER_PATH -i page.txt
+          
+          # Create a script to kill transmission-cli once the download finishes (prevents seeding)
+          echo "killall transmission-cli" > stop_seed.sh
+          chmod +x stop_seed.sh
+          
+          # Loop through each link in page.txt
+          while IFS= read -r link; do
+            # Strip carriage returns in case the downloaded text file has Windows line endings
+            link=$(echo "$link" | tr -d '\r')
+            
+            # Skip empty lines and commented lines
+            if [ -n "$link" ] && [[ ! "$link" =~ ^# ]]; then
+              echo "Downloading: $link"
+              # -w sets the download directory
+              # -f executes our script when download completes, terminating the transmission-cli process
+              transmission-cli -w "$FOLDER_PATH" -f ./stop_seed.sh "$link" || true
+            fi
+          done < page.txt
 
       - name: Upload files to Filemirage
         run: |
