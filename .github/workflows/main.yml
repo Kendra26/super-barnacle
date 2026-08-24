@@ -1,4 +1,4 @@
-Name: Torrent Download & Upload to Filemirage
+name: Torrent Download & Upload to Filemirage
 
 on:
   push:
@@ -16,8 +16,8 @@ jobs:
       ZIP_NAME: 'downloaded_files.zip'
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Install dependencies
         run: |
@@ -29,14 +29,13 @@ jobs:
         run: |
           mkdir -p "$FOLDER_PATH"
           
-          # Start the transmission background daemon with auth disabled (-T) 
-          # and set the download folder to our target directory
+          # Start transmission background daemon with auth disabled (-T)
           transmission-daemon -T -w "$PWD/$FOLDER_PATH"
           
-          # Give the daemon a few seconds to fully initialize
+          # Give daemon time to initialize
           sleep 3
           
-          # Loop through each link and add it to the daemon
+          # Add links to daemon
           while IFS= read -r link || [ -n "$link" ]; do
             link=$(echo "$link" | tr -d '\r')
             if [ -n "$link" ] && [[ ! "$link" =~ ^# ]]; then
@@ -47,23 +46,18 @@ jobs:
           
           echo "Waiting for all torrents to finish downloading..."
           
-          # Monitoring loop
+          # Progress monitoring loop
           while true; do
             sleep 10
-            
-            # Print current status to the GitHub Actions log
             transmission-remote -l
             
-            # Extract the raw list of torrents (stripping header and summary footer)
             TORRENT_LIST=$(transmission-remote -l | sed '1d;$d')
             
-            # If the list is empty, break to avoid infinite loop
             if [ -z "$(echo "$TORRENT_LIST" | tr -d ' \n\r')" ]; then
               echo "No active torrents found."
               break
             fi
             
-            # Count total vs 100% completed
             TOTAL=$(echo "$TORRENT_LIST" | wc -l)
             COMPLETED=$(echo "$TORRENT_LIST" | grep -c "100%" || true)
             
@@ -75,19 +69,17 @@ jobs:
             fi
           done
           
-          # Stop the daemon to halt all seeding
           echo "Killing Transmission daemon to stop seeding..."
           killall transmission-daemon
           sleep 2
 
       - name: Zip downloaded files
         run: |
-          echo "Compressing $FOLDER_PATH into $ZIP_NAME..."
-          zip -r "$ZIP_NAME" "$FOLDER_PATH"
+          echo "Compressing $FOLDER_PATH contents into $ZIP_NAME..."
+          cd "$FOLDER_PATH" && zip -r "../$ZIP_NAME" .
 
       - name: Upload zip file to Filemirage
         run: |
-          # Fetch upload server details
           SERVER=$(curl -s https://filemirage.com/api/servers | jq -r '.data.server')
           UPLOAD_ID=$(curl -s https://filemirage.com/api/servers | jq -r '.data.upload_id')
           
