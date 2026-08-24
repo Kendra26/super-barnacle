@@ -10,32 +10,26 @@ jobs:
   torrent-upload:
     runs-on: ubuntu-latest
     env:
-      PIXELDRAIN_API_KEY: '9'  # Keep for reference if needed
-      FILEMIRAGE_API_TOKEN: '9QQH-DGES-CWQZ-FXNV'  # Set API token here
-      FOLDER_PATH: 'downloaded_files'  # Folder to store downloads
+      PIXELDRAIN_API_KEY: '9'
+      FILEMIRAGE_API_TOKEN: '9QQH-DGES-CWQZ-FXNV'
+      FOLDER_PATH: 'downloaded_files'
       ZIP_NAME: 'downloaded_files.zip'
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
       - name: Install dependencies
         run: |
           sudo apt update && sudo apt install transmission-daemon transmission-cli jq curl zip -y
-          # Download links
           curl -o page.txt "https://equestria-eta.vercel.app/api/pages/dprjjMvC8fCF/raw"
 
       - name: Download torrent content with Transmission
         run: |
           mkdir -p "$FOLDER_PATH"
-          
-          # Start transmission background daemon with auth disabled (-T)
           transmission-daemon -T -w "$PWD/$FOLDER_PATH"
-          
-          # Give daemon time to initialize
           sleep 3
           
-          # Add links to daemon
           while IFS= read -r link || [ -n "$link" ]; do
             link=$(echo "$link" | tr -d '\r')
             if [ -n "$link" ] && [[ ! "$link" =~ ^# ]]; then
@@ -46,7 +40,6 @@ jobs:
           
           echo "Waiting for all torrents to finish downloading..."
           
-          # Progress monitoring loop
           while true; do
             sleep 10
             transmission-remote -l
@@ -75,8 +68,8 @@ jobs:
 
       - name: Zip downloaded files
         run: |
-          echo "Compressing $FOLDER_PATH contents into $ZIP_NAME..."
-          cd "$FOLDER_PATH" && zip -r "../$ZIP_NAME" .
+          echo "Compressing $FOLDER_PATH into $ZIP_NAME..."
+          zip -r "$ZIP_NAME" "$FOLDER_PATH"
 
       - name: Upload zip file to Filemirage
         run: |
