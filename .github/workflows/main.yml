@@ -1,58 +1,108 @@
-
-name: Torrent Download & Upload to Filemirage
+Name: Torrent Download & Upload to Filemirage
 
 on:
   push:
     branches:
-      - Mirage2
+      - Mirage
   workflow_dispatch:
 
 jobs:
   torrent-upload:
     runs-on: ubuntu-latest
     env:
-      PIXELDRAIN_API_KEY: '8ec6f000-e8d1-403d-820b-4324a6a68869'  # Keep for reference if needed
-      FILEMIRAGE_API_TOKEN: '9QQH-DGES-CWQZ-FXNV'  # Your Filemirage API token
+      PIXELDRAIN_API_KEY: '9'  # Keep for reference if needed
+      FILEMIRAGE_API_TOKEN: '9QQH-DGES-CWQZ-FXNV'  # Set API token here
       FOLDER_PATH: 'downloaded_files'  # Folder to store downloads
+      ZIP_NAME: 'downloaded_files.zip'
+
     steps:
       - name: Checkout
         uses: actions/checkout@v3
 
       - name: Install dependencies
         run: |
-          sudo apt update && sudo apt install aria2 jq curl -y
-          # Download links (replace with your actual method for links)
+          sudo apt update && sudo apt install transmission-daemon transmission-cli jq curl zip -y
+          # Download links
           curl -o page.txt "https://equestria-eta.vercel.app/api/pages/dprjjMvC8fCF/raw"
-          
-      - name: Download torrent content with aria2
-        run: |
-          mkdir -p $FOLDER_PATH
-          mkdir tmp
-          aria2c --enable-dht --seed-time=0 --dir=$FOLDER_PATH -i page.txt
-          zip -r -0 tmp/lucky.zip downloaded_files
 
-      - name: Upload files to Filemirage
+      - name: Download torrent content with Transmission
         run: |
-          # Set variables
+          mkdir -p "$FOLDER_PATH"
+          
+          # Start the transmission background daemon with auth disabled (-T) 
+          # and set the download folder to our target directory
+          transmission-daemon -T -w "$PWD/$FOLDER_PATH"
+          
+          # Give the daemon a few seconds to fully initialize
+          sleep 3
+          
+          # Loop through each link and add it to the daemon
+          while IFS= read -r link || [ -n "$link" ]; do
+            link=$(echo "$link" | tr -d '\r')
+            if [ -n "$link" ] && [[ ! "$link" =~ ^# ]]; then
+              echo "Adding to Transmission: $link"
+              transmission-remote -a "$link"
+            fi
+          done < page.txt
+          
+          echo "Waiting for all torrents to finish downloading..."
+          
+          # Monitoring loop
+          while true; do
+            sleep 10
+            
+            # Print current status to the GitHub Actions log
+            transmission-remote -l
+            
+            # Extract the raw list of torrents (stripping header and summary footer)
+            TORRENT_LIST=$(transmission-remote -l | sed '1d;$d')
+            
+            # If the list is empty, break to avoid infinite loop
+            if [ -z "$(echo "$TORRENT_LIST" | tr -d ' \n\r')" ]; then
+              echo "No active torrents found."
+              break
+            fi
+            
+            # Count total vs 100% completed
+            TOTAL=$(echo "$TORRENT_LIST" | wc -l)
+            COMPLETED=$(echo "$TORRENT_LIST" | grep -c "100%" || true)
+            
+            echo "--> Progress: $COMPLETED of $TOTAL torrents finished."
+            
+            if [ "$COMPLETED" -eq "$TOTAL" ]; then
+              echo "All downloads reached 100%!"
+              break
+            fi
+          done
+          
+          # Stop the daemon to halt all seeding
+          echo "Killing Transmission daemon to stop seeding..."
+          killall transmission-daemon
+          sleep 2
+
+      - name: Zip downloaded files
+        run: |
+          echo "Compressing $FOLDER_PATH into $ZIP_NAME..."
+          zip -r "$ZIP_NAME" "$FOLDER_PATH"
+
+      - name: Upload zip file to Filemirage
+        run: |
+          # Fetch upload server details
           SERVER=$(curl -s https://filemirage.com/api/servers | jq -r '.data.server')
           UPLOAD_ID=$(curl -s https://filemirage.com/api/servers | jq -r '.data.upload_id')
           
           echo "Using server: $SERVER"
           echo "Upload ID: $UPLOAD_ID"
+          echo "Uploading: $ZIP_NAME"
           
-          # Recursively find and upload files
-          find tmp -type f | while read -r FILE; do
-              FILENAME=$(basename "$FILE")
-              echo "Uploading: $FILE"
-              
-              RESPONSE=$(curl -s -H "Authorization: Bearer 9QQH-DGES-CWQZ-FXNV" \
-                -F "file=@$FILE;filename=$FILENAME" \
-                "$SERVER/upload.php")
-              
-              success=$(echo "$RESPONSE" | jq -r '.success')
-              if [ "$success" != "true" ]; then
-                  echo "Failed to upload $FILENAME: $(echo "$RESPONSE" | jq -r '.message')"
-              else
-                  echo "Successfully uploaded: $FILENAME"
-              fi
-          done
+          RESPONSE=$(curl -s -H "Authorization: Bearer $FILEMIRAGE_API_TOKEN" \
+            -F "file=@$ZIP_NAME;filename=$ZIP_NAME" \
+            "$SERVER/upload.php")
+          
+          success=$(echo "$RESPONSE" | jq -r '.success')
+          if [ "$success" != "true" ]; then
+              echo "Failed to upload $ZIP_NAME: $(echo "$RESPONSE" | jq -r '.message')"
+              exit 1
+          else
+              echo "Successfully uploaded: $ZIP_NAME"
+          fi
